@@ -126,4 +126,8 @@ if text:
     st.subheader("📥 Download Summary as PDF")
     base64_pdf = create_pdf(summary)
     download_link = f'<a href="data:application/pdf;base64,{base64_pdf}" download="BillCheck_AI_Summary.pdf">📄 Click to Download Summary PDF</a>'
+<<<<<<< HEAD
     st.markdown(download_link, unsafe_allow_html=True)
+=======
+    st.markdown(download_link, unsafe_allow_html=True)
+>>>>>>> 8990e94 (Updated billcheck_ai.py with image OCR and error fixes)
