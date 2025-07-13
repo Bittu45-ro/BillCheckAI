@@ -9,7 +9,7 @@ import pytesseract
 from PIL import Image
 import platform
 
-# Platform-specific Tesseract path for Windows
+# Set Tesseract path for Windows (Streamlit Cloud will ignore this)
 if platform.system() == "Windows":
     pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
@@ -18,11 +18,12 @@ st.set_page_config(page_title="BillCheck AI", layout="wide")
 st.markdown("<h1 style='text-align: center;'>🧾 BillCheck AI</h1>", unsafe_allow_html=True)
 st.markdown("<h4 style='text-align: center; color: gray;'>Smart AI for Smart Spending</h4>", unsafe_allow_html=True)
 
-# No Hugging Face token needed (model is public)
-summarizer = pipeline("summarization", model="sshleifer/distilbart-cnn-12-6")
+# ---------------- MODEL LOADING (CACHED) ----------------
+@st.cache_resource(show_spinner="Loading AI model...")
+def load_summarizer():
+    return pipeline("summarization", model="sshleifer/distilbart-cnn-12-6")
 
 # ---------------- TEXT EXTRACTION ----------------
-
 def extract_text_from_pdf(pdf_file):
     doc = fitz.open(stream=pdf_file.read(), filetype="pdf")
     return "\n".join([page.get_text() for page in doc])
@@ -36,8 +37,7 @@ def extract_text_from_image(image_file):
         return ""
 
 # ---------------- SUMMARIZATION ----------------
-
-def generate_summary(text):
+def generate_summary(text, summarizer):
     chunks = [text[i:i+400] for i in range(0, len(text), 400)]
     summary = ""
     for chunk in chunks:
@@ -52,7 +52,6 @@ def generate_summary(text):
     return summary.strip() or "No summary generated."
 
 # ---------------- EXPORT TO PDF ----------------
-
 def create_pdf(summary_text):
     pdf = FPDF()
     pdf.add_page()
@@ -65,7 +64,6 @@ def create_pdf(summary_text):
         return base64.b64encode(f.read()).decode("utf-8")
 
 # ---------------- VALIDATION CHECKS ----------------
-
 def detect_fake_tax_rates(text):
     valid_rates = ["0%", "5%", "12%", "18%", "28%"]
     found_rates = re.findall(r'\b\d{1,2}%\b', text)
@@ -76,7 +74,6 @@ def check_gstin_validity(text):
     return gstins if gstins else ["❌ No valid GSTIN found or possibly fake format."]
 
 # ---------------- MAIN APP ----------------
-
 st.markdown("### 📤 Upload Your Bill (PDF or Image)")
 col1, col2 = st.columns(2)
 text = ""
@@ -100,9 +97,11 @@ elif image_file:
 
 # Process the text
 if text:
+    summarizer = load_summarizer()
+
     st.markdown("---")
     st.markdown("### 🤖 AI Summary")
-    summary = generate_summary(text)
+    summary = generate_summary(text, summarizer)
     st.text_area("📄 AI Generated Summary", summary, height=300)
 
     st.markdown("---")
