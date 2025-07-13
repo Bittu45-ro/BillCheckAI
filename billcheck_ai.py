@@ -42,11 +42,15 @@ def extract_text_from_image(image_file):
 # --- SUMMARY GENERATION ---
 
 def generate_summary(text):
-    chunks = [text[i:i+1000] for i in range(0, len(text), 1000)]
+    # Split into chunks of ~400 characters
+    chunks = [text[i:i+400] for i in range(0, len(text), 400)]
     summary = ""
     for chunk in chunks:
-        result = summarizer(chunk, max_length=250, min_length=30, do_sample=False)
-        summary += result[0]['summary_text'] + "\n\n"
+        try:
+            output = summarizer(chunk, max_length=150, min_length=30, do_sample=False)
+            summary += output[0]['summary_text'] + "\n\n"
+        except Exception as e:
+            summary += "[Error summarizing this part]\n\n"
     return summary
 
 # --- PDF EXPORT ---
