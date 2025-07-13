@@ -9,7 +9,7 @@ import pytesseract
 from PIL import Image
 import platform
 
-# Set Tesseract path for Windows (Streamlit Cloud will ignore this)
+# Platform-specific Tesseract path for Windows
 if platform.system() == "Windows":
     pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
@@ -18,12 +18,16 @@ st.set_page_config(page_title="BillCheck AI", layout="wide")
 st.markdown("<h1 style='text-align: center;'>🧾 BillCheck AI</h1>", unsafe_allow_html=True)
 st.markdown("<h4 style='text-align: center; color: gray;'>Smart AI for Smart Spending</h4>", unsafe_allow_html=True)
 
-# ---------------- MODEL LOADING (CACHED) ----------------
-@st.cache_resource(show_spinner="Loading AI model...")
+# ---------------- LOAD SUMMARIZER ----------------
+
+@st.cache_resource
 def load_summarizer():
-    return pipeline("summarization", model="sshleifer/distilbart-cnn-12-6")
+    return pipeline("summarization", model="Falconsai/text_summarization")
+
+summarizer = load_summarizer()
 
 # ---------------- TEXT EXTRACTION ----------------
+
 def extract_text_from_pdf(pdf_file):
     doc = fitz.open(stream=pdf_file.read(), filetype="pdf")
     return "\n".join([page.get_text() for page in doc])
@@ -37,8 +41,9 @@ def extract_text_from_image(image_file):
         return ""
 
 # ---------------- SUMMARIZATION ----------------
-def generate_summary(text, summarizer):
-    chunks = [text[i:i+400] for i in range(0, len(text), 400)]
+
+def generate_summary(text):
+    chunks = [text[i:i+400] for i in range(0, min(len(text), 1200), 400)]  # Only first 3 chunks
     summary = ""
     for chunk in chunks:
         try:
@@ -52,6 +57,7 @@ def generate_summary(text, summarizer):
     return summary.strip() or "No summary generated."
 
 # ---------------- EXPORT TO PDF ----------------
+
 def create_pdf(summary_text):
     pdf = FPDF()
     pdf.add_page()
@@ -64,6 +70,7 @@ def create_pdf(summary_text):
         return base64.b64encode(f.read()).decode("utf-8")
 
 # ---------------- VALIDATION CHECKS ----------------
+
 def detect_fake_tax_rates(text):
     valid_rates = ["0%", "5%", "12%", "18%", "28%"]
     found_rates = re.findall(r'\b\d{1,2}%\b', text)
@@ -74,6 +81,7 @@ def check_gstin_validity(text):
     return gstins if gstins else ["❌ No valid GSTIN found or possibly fake format."]
 
 # ---------------- MAIN APP ----------------
+
 st.markdown("### 📤 Upload Your Bill (PDF or Image)")
 col1, col2 = st.columns(2)
 text = ""
@@ -97,29 +105,30 @@ elif image_file:
 
 # Process the text
 if text:
-    summarizer = load_summarizer()
-
     st.markdown("---")
     st.markdown("### 🤖 AI Summary")
-    summary = generate_summary(text, summarizer)
-    st.text_area("📄 AI Generated Summary", summary, height=300)
 
-    st.markdown("---")
-    st.markdown("### 🧪 GST & Tax Check")
+    if st.button("🔍 Generate AI Summary"):
+        with st.spinner("Summarizing..."):
+            summary = generate_summary(text)
+        st.text_area("📄 AI Generated Summary", summary, height=300)
 
-    fake_taxes = detect_fake_tax_rates(text)
-    if fake_taxes:
-        st.warning(f"⚠️ Unusual or fake tax rates found: {', '.join(fake_taxes)}")
-    else:
-        st.success("✅ All tax rates look valid (0%, 5%, 12%, 18%, 28%).")
+        st.markdown("---")
+        st.markdown("### 🧪 GST & Tax Check")
 
-    gstins = check_gstin_validity(text)
-    st.markdown("🔍 **GSTIN Check:**")
-    for gstin in gstins:
-        st.code(gstin)
+        fake_taxes = detect_fake_tax_rates(text)
+        if fake_taxes:
+            st.warning(f"⚠️ Unusual or fake tax rates found: {', '.join(fake_taxes)}")
+        else:
+            st.success("✅ All tax rates look valid (0%, 5%, 12%, 18%, 28%).")
 
-    st.markdown("---")
-    st.markdown("### 📥 Download Summary as PDF")
-    base64_pdf = create_pdf(summary)
-    download_link = f'<a href="data:application/pdf;base64,{base64_pdf}" download="BillCheck_AI_Summary.pdf">📄 Click to Download Summary PDF</a>'
-    st.markdown(download_link, unsafe_allow_html=True)
+        gstins = check_gstin_validity(text)
+        st.markdown("🔍 **GSTIN Check:**")
+        for gstin in gstins:
+            st.code(gstin)
+
+        st.markdown("---")
+        st.markdown("### 📥 Download Summary as PDF")
+        base64_pdf = create_pdf(summary)
+        download_link = f'<a href="data:application/pdf;base64,{base64_pdf}" download="BillCheck_AI_Summary.pdf">📄 Click to Download Summary PDF</a>'
+        st.markdown(download_link, unsafe_allow_html=True)
