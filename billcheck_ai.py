@@ -7,9 +7,10 @@ import fitz  # PyMuPDF
 import re
 import pytesseract
 from PIL import Image
+import platform
 
-# Set Tesseract path (optional if deployed on Windows locally)
-pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+if platform.system() == "Windows":
+    pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
 # Streamlit Page Settings
 st.set_page_config(page_title="BillCheck AI")
