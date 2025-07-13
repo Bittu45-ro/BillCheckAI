@@ -1,7 +1,8 @@
+streamlit
 transformers
 torch
-streamlit
-fpdf
-PyMuPDF
 pytesseract
 Pillow
+fpdf
+PyMuPDF
+huggingface-hub
