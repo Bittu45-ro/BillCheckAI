@@ -9,25 +9,75 @@ import pytesseract
 from PIL import Image
 import platform
 
-# Platform-specific Tesseract path for Windows
-if platform.system() == "Windows":
-    pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+# ---------------- UI STYLES ----------------
+st.markdown("""
+    <style>
+    html, body, [class*="css"]  {
+        font-family: 'Segoe UI', sans-serif;
+    }
+
+    h1 {
+        color: #0072E8;
+        font-size: 40px;
+    }
+
+    .stTextArea textarea {
+        background-color: #f9f9f9;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        padding: 10px;
+    }
+
+    .block-container {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+    }
+
+    .stButton > button {
+        background-color: #0072E8;
+        color: white;
+        border: None;
+        border-radius: 8px;
+        padding: 0.5rem 1rem;
+        font-weight: bold;
+        transition: 0.3s;
+    }
+
+    .stButton > button:hover {
+        background-color: #005bb5;
+        transform: scale(1.02);
+    }
+
+    a {
+        color: #0072E8 !important;
+        font-weight: bold;
+    }
+
+    hr {
+        border-top: 1px solid #ccc;
+        margin-top: 2rem;
+        margin-bottom: 2rem;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
 # ---------------- STREAMLIT SETTINGS ----------------
 st.set_page_config(page_title="BillCheck AI", layout="wide")
-st.markdown("<h1 style='text-align: center;'>🧾 BillCheck AI</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center;'>🧾 <span style='color:#0072E8'>BillCheck AI</span></h1>", unsafe_allow_html=True)
 st.markdown("<h4 style='text-align: center; color: gray;'>Smart AI for Smart Spending</h4>", unsafe_allow_html=True)
 
 # ---------------- LOAD SUMMARIZER ----------------
-
 @st.cache_resource
 def load_summarizer():
     return pipeline("summarization", model="Falconsai/text_summarization")
 
 summarizer = load_summarizer()
 
-# ---------------- TEXT EXTRACTION ----------------
+# ---------------- PLATFORM SETUP ----------------
+if platform.system() == "Windows":
+    pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
+# ---------------- TEXT EXTRACTION ----------------
 def extract_text_from_pdf(pdf_file):
     doc = fitz.open(stream=pdf_file.read(), filetype="pdf")
     return "\n".join([page.get_text() for page in doc])
@@ -41,9 +91,8 @@ def extract_text_from_image(image_file):
         return ""
 
 # ---------------- SUMMARIZATION ----------------
-
 def generate_summary(text):
-    chunks = [text[i:i+400] for i in range(0, min(len(text), 1200), 400)]  # Only first 3 chunks
+    chunks = [text[i:i+400] for i in range(0, min(len(text), 1200), 400)]
     summary = ""
     for chunk in chunks:
         try:
@@ -57,7 +106,6 @@ def generate_summary(text):
     return summary.strip() or "No summary generated."
 
 # ---------------- EXPORT TO PDF ----------------
-
 def create_pdf(summary_text):
     pdf = FPDF()
     pdf.add_page()
@@ -70,7 +118,6 @@ def create_pdf(summary_text):
         return base64.b64encode(f.read()).decode("utf-8")
 
 # ---------------- VALIDATION CHECKS ----------------
-
 def detect_fake_tax_rates(text):
     valid_rates = ["0%", "5%", "12%", "18%", "28%"]
     found_rates = re.findall(r'\b\d{1,2}%\b', text)
@@ -81,8 +128,9 @@ def check_gstin_validity(text):
     return gstins if gstins else ["❌ No valid GSTIN found or possibly fake format."]
 
 # ---------------- MAIN APP ----------------
+st.markdown("## 📤 Upload Your Bill")
+st.caption("Supports PDF, JPG, PNG, HEIC formats")
 
-st.markdown("### 📤 Upload Your Bill (PDF or Image)")
 col1, col2 = st.columns(2)
 text = ""
 
@@ -106,7 +154,7 @@ elif image_file:
 # Process the text
 if text:
     st.markdown("---")
-    st.markdown("### 🤖 AI Summary")
+    st.markdown("## 🤖 AI Generated Summary")
 
     if st.button("🔍 Generate AI Summary"):
         with st.spinner("Summarizing..."):
@@ -114,7 +162,7 @@ if text:
         st.text_area("📄 AI Generated Summary", summary, height=300)
 
         st.markdown("---")
-        st.markdown("### 🧪 GST & Tax Check")
+        st.markdown("## 🧪 GST & Tax Validation")
 
         fake_taxes = detect_fake_tax_rates(text)
         if fake_taxes:
@@ -128,7 +176,7 @@ if text:
             st.code(gstin)
 
         st.markdown("---")
-        st.markdown("### 📥 Download Summary as PDF")
+        st.markdown("## 📥 Download Your Bill Summary")
         base64_pdf = create_pdf(summary)
         download_link = f'<a href="data:application/pdf;base64,{base64_pdf}" download="BillCheck_AI_Summary.pdf">📄 Click to Download Summary PDF</a>'
         st.markdown(download_link, unsafe_allow_html=True)
