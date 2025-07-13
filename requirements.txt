@@ -1,7 +1,7 @@
-torch
 transformers
-fpdf
+torch
 streamlit
+fpdf
 PyMuPDF
 pytesseract
 Pillow
