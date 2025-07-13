@@ -9,39 +9,33 @@ import pytesseract
 from PIL import Image
 import platform
 
+# Platform-specific Tesseract path for Windows
 if platform.system() == "Windows":
     pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
-# Streamlit Page Settings
-st.set_page_config(page_title="BillCheck AI")
-st.title("🧾 BillCheck AI - Smart AI for Smart Spending")
+# ---------------- STREAMLIT SETTINGS ----------------
+st.set_page_config(page_title="BillCheck AI", layout="wide")
+st.markdown("<h1 style='text-align: center;'>🧾 BillCheck AI</h1>", unsafe_allow_html=True)
+st.markdown("<h4 style='text-align: center; color: gray;'>Smart AI for Smart Spending</h4>", unsafe_allow_html=True)
 
-# Hugging Face API Key (stored securely in Streamlit Secrets)
-hf_token = st.secrets["huggingface"]["api_key"]
+# No Hugging Face token needed (model is public)
+summarizer = pipeline("summarization", model="sshleifer/distilbart-cnn-12-6")
 
-# Load the summarization pipeline
-# Use a smaller model and correct token param
-summarizer = pipeline("summarization", model="sshleifer/distilbart-cnn-12-6", token=hf_token)
-
-# --- TEXT EXTRACTION FUNCTIONS ---
+# ---------------- TEXT EXTRACTION ----------------
 
 def extract_text_from_pdf(pdf_file):
     doc = fitz.open(stream=pdf_file.read(), filetype="pdf")
-    text = ""
-    for page in doc:
-        text += page.get_text()
-    return text
+    return "\n".join([page.get_text() for page in doc])
 
 def extract_text_from_image(image_file):
     try:
         image = Image.open(image_file).convert("RGB")
-        text = pytesseract.image_to_string(image)
-        return text
+        return pytesseract.image_to_string(image)
     except Exception as e:
         st.error(f"Image processing failed: {e}")
         return ""
 
-# --- SUMMARY GENERATION ---
+# ---------------- SUMMARIZATION ----------------
 
 def generate_summary(text):
     chunks = [text[i:i+400] for i in range(0, len(text), 400)]
@@ -49,15 +43,15 @@ def generate_summary(text):
     for chunk in chunks:
         try:
             if len(chunk.strip()) < 30:
-                continue  # Skip too short text chunks
+                continue
             output = summarizer(chunk, max_length=80, min_length=20, do_sample=False)
             summary += output[0]['summary_text'] + "\n\n"
         except Exception as e:
             summary += "[Error summarizing this part]\n\n"
             st.warning(f"⚠️ Summarization error: {e}")
-    return summary or "No summary generated."
+    return summary.strip() or "No summary generated."
 
-# --- PDF EXPORT ---
+# ---------------- EXPORT TO PDF ----------------
 
 def create_pdf(summary_text):
     pdf = FPDF()
@@ -70,7 +64,7 @@ def create_pdf(summary_text):
     with open(pdf_file_path, "rb") as f:
         return base64.b64encode(f.read()).decode("utf-8")
 
-# --- CHECK FUNCTIONS ---
+# ---------------- VALIDATION CHECKS ----------------
 
 def detect_fake_tax_rates(text):
     valid_rates = ["0%", "5%", "12%", "18%", "28%"]
@@ -81,16 +75,18 @@ def check_gstin_validity(text):
     gstins = re.findall(r'\b[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]\b', text)
     return gstins if gstins else ["❌ No valid GSTIN found or possibly fake format."]
 
-# --- UI SECTION ---
+# ---------------- MAIN APP ----------------
 
-st.subheader("📤 Upload a Bill (PDF or Image)")
-
-pdf_file = st.file_uploader("Upload PDF Bill", type=["pdf"])
-image_file = st.file_uploader("Or Upload Image Bill (JPG, PNG, HEIC/HEIF)", type=["jpg", "jpeg", "png", "heic", "heif"])
-
+st.markdown("### 📤 Upload Your Bill (PDF or Image)")
+col1, col2 = st.columns(2)
 text = ""
 
-# Read input
+with col1:
+    pdf_file = st.file_uploader("Upload PDF Bill", type=["pdf"])
+with col2:
+    image_file = st.file_uploader("Or Upload Image Bill", type=["jpg", "jpeg", "png", "heic", "heif"])
+
+# Extract text
 if pdf_file:
     st.info("📖 Reading PDF...")
     text = extract_text_from_pdf(pdf_file)
@@ -98,21 +94,19 @@ if pdf_file:
 
 elif image_file:
     st.info("🖼️ Reading Image...")
-    try:
-        text = extract_text_from_image(image_file)
+    text = extract_text_from_image(image_file)
+    if text:
         st.success("✅ Text extracted from Image!")
-    except Exception as e:
-        st.error("❌ Failed to extract text from image.")
 
-# Process if text exists
+# Process the text
 if text:
     st.markdown("---")
-    st.subheader("🤖 AI Summary")
+    st.markdown("### 🤖 AI Summary")
     summary = generate_summary(text)
     st.text_area("📄 AI Generated Summary", summary, height=300)
 
     st.markdown("---")
-    st.subheader("🧪 GST & Tax Check")
+    st.markdown("### 🧪 GST & Tax Check")
 
     fake_taxes = detect_fake_tax_rates(text)
     if fake_taxes:
@@ -121,12 +115,12 @@ if text:
         st.success("✅ All tax rates look valid (0%, 5%, 12%, 18%, 28%).")
 
     gstins = check_gstin_validity(text)
-    st.write("🔍 GSTIN Check:")
+    st.markdown("🔍 **GSTIN Check:**")
     for gstin in gstins:
         st.code(gstin)
 
     st.markdown("---")
-    st.subheader("📥 Download Summary as PDF")
+    st.markdown("### 📥 Download Summary as PDF")
     base64_pdf = create_pdf(summary)
     download_link = f'<a href="data:application/pdf;base64,{base64_pdf}" download="BillCheck_AI_Summary.pdf">📄 Click to Download Summary PDF</a>'
     st.markdown(download_link, unsafe_allow_html=True)
