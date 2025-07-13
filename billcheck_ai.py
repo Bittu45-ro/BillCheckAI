@@ -20,7 +20,8 @@ st.title("🧾 BillCheck AI - Smart AI for Smart Spending")
 hf_token = st.secrets["huggingface"]["api_key"]
 
 # Load the summarization pipeline
-summarizer = pipeline("summarization", model="t5-small", tokenizer="t5-small", use_auth_token=hf_token)
+# Use a smaller model and correct token param
+summarizer = pipeline("summarization", model="sshleifer/distilbart-cnn-12-6", token=hf_token)
 
 # --- TEXT EXTRACTION FUNCTIONS ---
 
