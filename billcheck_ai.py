@@ -1,7 +1,3 @@
-
-import ast
-
-code = """
 import torch
 from transformers import pipeline
 from fpdf import FPDF
@@ -14,7 +10,7 @@ from PIL import Image
 import platform
 
 # ---------------- UI STYLES ----------------
-st.markdown(\"""
+st.markdown("""
     <style>
     html, body, [class*="css"]  {
         font-family: 'Segoe UI', sans-serif;
@@ -56,7 +52,7 @@ st.markdown(\"""
         margin-bottom: 2rem;
     }
     </style>
-\""", unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
 # ---------------- STREAMLIT SETTINGS ----------------
 st.set_page_config(page_title="BillCheck AI", layout="wide")
@@ -72,12 +68,12 @@ except Exception as e:
 
 # ---------------- PLATFORM SETUP ----------------
 if platform.system() == "Windows":
-    pytesseract.pytesseract.tesseract_cmd = r"C:\\Program Files\\Tesseract-OCR\\tesseract.exe"
+    pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
 # ---------------- TEXT EXTRACTION ----------------
 def extract_text_from_pdf(pdf_file):
     doc = fitz.open(stream=pdf_file.read(), filetype="pdf")
-    return "\\n".join([page.get_text() for page in doc])
+    return "\n".join([page.get_text() for page in doc])
 
 def extract_text_from_image(image_file):
     try:
@@ -91,7 +87,7 @@ def extract_text_from_image(image_file):
 def generate_summary(text):
     if not summarizer:
         return "❌ Summarizer model could not be loaded."
-    
+
     chunks = [text[i:i+400] for i in range(0, min(len(text), 1200), 400)]
     summary = ""
     for chunk in chunks:
@@ -99,9 +95,9 @@ def generate_summary(text):
             if len(chunk.strip()) < 30:
                 continue
             output = summarizer(chunk, max_length=80, min_length=20, do_sample=False)
-            summary += output[0]['summary_text'] + "\\n\\n"
+            summary += output[0]['summary_text'] + "\n\n"
         except Exception as e:
-            summary += "[Error summarizing this part]\\n\\n"
+            summary += "[Error summarizing this part]\n\n"
             st.warning(f"⚠️ Summarization error: {e}")
     return summary.strip() or "No summary generated."
 
@@ -110,7 +106,7 @@ def create_pdf(summary_text):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", size=12)
-    for line in summary_text.split('\\n'):
+    for line in summary_text.split('\n'):
         pdf.multi_cell(0, 10, line)
     pdf_file_path = "billcheck_summary.pdf"
     pdf.output(pdf_file_path)
@@ -120,11 +116,11 @@ def create_pdf(summary_text):
 # ---------------- VALIDATION CHECKS ----------------
 def detect_fake_tax_rates(text):
     valid_rates = ["0%", "5%", "12%", "18%", "28%"]
-    found_rates = re.findall(r'\\b\\d{1,2}%\\b', text)
+    found_rates = re.findall(r'\b\d{1,2}%\b', text)
     return [rate for rate in found_rates if rate not in valid_rates]
 
 def check_gstin_validity(text):
-    gstins = re.findall(r'\\b[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]\\b', text)
+    gstins = re.findall(r'\b[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]\b', text)
     return gstins if gstins else ["❌ No valid GSTIN found or possibly fake format."]
 
 # ---------------- MAIN APP ----------------
@@ -180,11 +176,3 @@ if text:
         base64_pdf = create_pdf(summary)
         download_link = f'<a href="data:application/pdf;base64,{base64_pdf}" download="BillCheck_AI_Summary.pdf">📄 Click to Download Summary PDF</a>'
         st.markdown(download_link, unsafe_allow_html=True)
-"""
-
-# Attempt to parse the Python code to check for syntax issues
-try:
-    ast.parse(code)
-    "✅ No syntax errors detected in your full Streamlit code."
-except SyntaxError as e:
-    f"❌ Syntax Error: {e}"
