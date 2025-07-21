@@ -56,10 +56,16 @@ st.markdown("""
 
 # ---------------- STREAMLIT SETTINGS ----------------
 st.set_page_config(page_title="BillCheck AI", layout="wide")
-st.markdown("<h1 style='text-align: center;'>🧾 <span style='color:#0072E8'>BillCheck AI</span></h1>", unsafe_allow_html=True)
-st.markdown("<h4 style='text-align: center; color: gray;'>Smart AI for Smart Spending</h4>", unsafe_allow_html=True)
 
-# ---------------- LOAD SUMMARIZER (NO CACHE) ----------------
+# ---------------- HEADER ----------------
+col_logo, col_title = st.columns([1, 4])
+with col_logo:
+    st.image("assets/logo.png", width=80)
+with col_title:
+    st.markdown("<h1 style='margin-bottom:0;'>🧾 <span style='color:#0072E8'>BillCheck AI</span></h1>", unsafe_allow_html=True)
+    st.markdown("<p style='margin-top:0; color:gray;'>Smart AI for Smart Spending</p>", unsafe_allow_html=True)
+
+# ---------------- LOAD SUMMARIZER ----------------
 try:
     summarizer = pipeline("summarization", model="Falconsai/text_summarization")
 except Exception as e:
@@ -124,10 +130,11 @@ def check_gstin_validity(text):
     return gstins if gstins else ["❌ No valid GSTIN found or possibly fake format."]
 
 # ---------------- MAIN APP ----------------
+st.markdown("<hr style='border:1px solid #ddd;'>", unsafe_allow_html=True)
 st.markdown("## 📤 Upload Your Bill")
 st.caption("Supports PDF, JPG, PNG, HEIC formats")
 
-col1, col2 = st.columns(2)
+col1, col2 = st.columns([1, 1])
 text = ""
 
 with col1:
@@ -149,15 +156,22 @@ elif image_file:
 
 # Process the text
 if text:
-    st.markdown("---")
+    st.markdown("<hr style='border:1px solid #ddd;'>", unsafe_allow_html=True)
     st.markdown("## 🤖 AI Generated Summary")
 
     if st.button("🔍 Generate AI Summary"):
         with st.spinner("Summarizing..."):
             summary = generate_summary(text)
-        st.text_area("📄 AI Generated Summary", summary, height=300)
 
-        st.markdown("---")
+        # Stylish card view
+        st.markdown(f"""
+            <div style="background-color:#f0f8ff;padding:15px 20px;border-left:5px solid #0072E8;border-radius:8px;">
+                <h4>📄 AI Generated Summary:</h4>
+                <p style="white-space:pre-wrap;">{summary}</p>
+            </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("<hr style='border:1px solid #ddd;'>", unsafe_allow_html=True)
         st.markdown("## 🧪 GST & Tax Validation")
 
         fake_taxes = detect_fake_tax_rates(text)
@@ -168,11 +182,20 @@ if text:
 
         gstins = check_gstin_validity(text)
         st.markdown("🔍 **GSTIN Check:**")
-        for gstin in gstins:
-            st.code(gstin)
+        gstin_html = " ".join([f"<span style='background:#e3f2fd;padding:6px 10px;margin:4px;border-radius:6px;display:inline-block;font-weight:500;'>{g}</span>" for g in gstins])
+        st.markdown(gstin_html, unsafe_allow_html=True)
 
-        st.markdown("---")
+        st.markdown("<hr style='border:1px solid #ddd;'>", unsafe_allow_html=True)
         st.markdown("## 📥 Download Your Bill Summary")
+
         base64_pdf = create_pdf(summary)
         download_link = f'<a href="data:application/pdf;base64,{base64_pdf}" download="BillCheck_AI_Summary.pdf">📄 Click to Download Summary PDF</a>'
         st.markdown(download_link, unsafe_allow_html=True)
+
+# ---------------- FOOTER ----------------
+st.markdown("""
+    <hr style="border-top: 1px solid #ccc;">
+    <div style='text-align: center; color: gray;'>
+        BillCheck AI © 2025 | Built with ❤️ by Sai Hrithik
+    </div>
+""", unsafe_allow_html=True)
