@@ -58,12 +58,8 @@ st.markdown("""
 st.set_page_config(page_title="BillCheck AI", layout="wide")
 
 # ---------------- HEADER ----------------
-col_logo, col_title = st.columns([1, 4])
-with col_logo:
-    st.image("assets/logo.png", width=80)
-with col_title:
-    st.markdown("<h1 style='margin-bottom:0;'>🧾 <span style='color:#0072E8'>BillCheck AI</span></h1>", unsafe_allow_html=True)
-    st.markdown("<p style='margin-top:0; color:gray;'>Smart AI for Smart Spending</p>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align:center;'>🧾 <span style='color:#0072E8;'>BillCheck AI</span></h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align:center; color:gray;'>Smart AI for Smart Spending</p>", unsafe_allow_html=True)
 
 # ---------------- LOAD SUMMARIZER ----------------
 try:
@@ -93,7 +89,6 @@ def extract_text_from_image(image_file):
 def generate_summary(text):
     if not summarizer:
         return "❌ Summarizer model could not be loaded."
-
     chunks = [text[i:i+400] for i in range(0, min(len(text), 1200), 400)]
     summary = ""
     for chunk in chunks:
@@ -199,3 +194,4 @@ st.markdown("""
         BillCheck AI © 2025 | Built with ❤️ by Sai Hrithik
     </div>
 """, unsafe_allow_html=True)
+
